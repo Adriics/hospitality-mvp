@@ -10,25 +10,33 @@ type Props = {
 export default async function TablePage({ params }: Props) {
   const { token } = await params
 
-  const { data: table, error } = await supabase
+  const { data: table, error: tableError } = await supabase
     .from('tables')
-    .select(`
-      id,
-      number,
-      token,
-      restaurant:restaurants (
-        id,
-        name
-      )
-    `)
+    .select('id, number, restaurant_id')
     .eq('token', token)
     .single()
 
-  if (error || !table) {
+  if (tableError || !table) {
     return (
       <main className="flex min-h-screen items-center justify-center p-6">
         <h1 className="text-xl font-semibold">
           Mesa no encontrada
+        </h1>
+      </main>
+    )
+  }
+
+  const { data: restaurant, error: restaurantError } = await supabase
+    .from('restaurants')
+    .select('id, name')
+    .eq('id', table.restaurant_id)
+    .single()
+
+  if (restaurantError || !restaurant) {
+    return (
+      <main className="flex min-h-screen items-center justify-center p-6">
+        <h1 className="text-xl font-semibold">
+          Restaurante no encontrado
         </h1>
       </main>
     )
@@ -43,7 +51,7 @@ export default async function TablePage({ params }: Props) {
           </p>
 
           <h1 className="mt-1 text-2xl font-bold text-gray-900">
-            {table.restaurant[0].name}
+            {restaurant.name}
           </h1>
 
           <div className="mt-3 inline-block rounded-full bg-gray-100 px-4 py-2">
