@@ -4,19 +4,55 @@ import TablesManager from "./TablesManager";
 export const dynamic = "force-dynamic";
 
 export default async function TablesPage() {
-  const restaurantId =
-    "626afdc0-dace-42cb-a3c3-d6133fb9c4ec";
+  const { data: restaurants, error: restaurantsError } =
+    await supabase
+      .from("restaurants")
+      .select("id, name")
+      .order("name", { ascending: true });
 
-  const { data: tables, error } = await supabase
-    .from("tables")
-    .select("id, number, token")
-    .eq("restaurant_id", restaurantId)
-    .order("number", { ascending: true });
-
-  if (error) {
+  if (restaurantsError) {
     return (
       <main className="p-6">
-        <p>Error cargando mesas: {error.message}</p>
+        <p>
+          Error cargando restaurantes:{" "}
+          {restaurantsError.message}
+        </p>
+      </main>
+    );
+  }
+
+  const firstRestaurant = restaurants?.[0];
+
+  if (!firstRestaurant) {
+    return (
+      <main className="min-h-screen bg-gray-100 px-4 py-8">
+        <div className="mx-auto max-w-4xl">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Mesas
+          </h1>
+
+          <p className="mt-4 text-gray-500">
+            No hay restaurantes configurados.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  const { data: tables, error: tablesError } =
+    await supabase
+      .from("tables")
+      .select("id, number, token")
+      .eq("restaurant_id", firstRestaurant.id)
+      .order("number", { ascending: true });
+
+  if (tablesError) {
+    return (
+      <main className="p-6">
+        <p>
+          Error cargando mesas:{" "}
+          {tablesError.message}
+        </p>
       </main>
     );
   }
@@ -35,7 +71,8 @@ export default async function TablesPage() {
         </div>
 
         <TablesManager
-          restaurantId={restaurantId}
+          restaurants={restaurants ?? []}
+          initialRestaurantId={firstRestaurant.id}
           initialTables={tables ?? []}
         />
       </div>

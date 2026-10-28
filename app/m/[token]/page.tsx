@@ -8,6 +8,7 @@ type Props = {
 }
 
 export default async function TablePage({ params }: Props) {
+
   const { token } = await params
 
   const { data: table, error: tableError } = await supabase
@@ -75,4 +76,5 @@ export default async function TablePage({ params }: Props) {
       </div>
     </main>
   )
+  
 }

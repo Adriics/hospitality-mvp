@@ -3,6 +3,7 @@
 import { useState } from "react";
 import QRCode from "qrcode";
 import jsPDF from "jspdf";
+import { supabase } from "@/lib/supabase/client";
 
 type Table = {
   id: string;
@@ -10,17 +11,54 @@ type Table = {
   token: string;
 };
 
+type Restaurant = {
+  id: string;
+  name: string;
+};
+
 type TablesManagerProps = {
-  restaurantId: string;
+  restaurants: Restaurant[];
+  initialRestaurantId: string;
   initialTables: Table[];
 };
 
 export default function TablesManager({
-  restaurantId,
+  restaurants,
+  initialRestaurantId,
   initialTables,
 }: TablesManagerProps) {
-  const [tables] = useState(initialTables);
+  const [restaurantId, setRestaurantId] =
+    useState(initialRestaurantId);
+
+  const [tables, setTables] =
+    useState<Table[]>(initialTables);
+
   const [loading, setLoading] = useState(false);
+
+  async function handleRestaurantChange(
+    newRestaurantId: string,
+  ) {
+    setRestaurantId(newRestaurantId);
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("tables")
+      .select("id, number, token")
+      .eq("restaurant_id", newRestaurantId)
+      .order("number", { ascending: true });
+
+    if (error) {
+      console.error(
+        "Error cargando mesas:",
+        error,
+      );
+      setTables([]);
+    } else {
+      setTables(data ?? []);
+    }
+
+    setLoading(false);
+  }
 
   async function generatePdf() {
     try {
@@ -30,7 +68,11 @@ export default function TablesManager({
 
       const baseUrl = window.location.origin;
 
-      for (let index = 0; index < tables.length; index++) {
+      for (
+        let index = 0;
+        index < tables.length;
+        index++
+      ) {
         const table = tables[index];
 
         if (index > 0) {
@@ -39,12 +81,14 @@ export default function TablesManager({
 
         const url = `${baseUrl}/m/${table.token}`;
 
-        const qrDataUrl = await QRCode.toDataURL(url, {
-          width: 800,
-          margin: 2,
-        });
+        const qrDataUrl =
+          await QRCode.toDataURL(url, {
+            width: 800,
+            margin: 2,
+          });
 
         pdf.setFontSize(28);
+
         pdf.text(
           `MESA ${table.number}`,
           105,
@@ -64,6 +108,7 @@ export default function TablesManager({
         );
 
         pdf.setFontSize(12);
+
         pdf.text(
           "Escanea para avisar al personal",
           105,
@@ -87,12 +132,41 @@ export default function TablesManager({
 
   return (
     <div>
+      <div className="mb-6 rounded-2xl bg-white p-5 shadow-sm">
+        <label
+          htmlFor="restaurant"
+          className="block text-sm font-semibold text-gray-700"
+        >
+          Restaurante
+        </label>
+
+        <select
+          id="restaurant"
+          value={restaurantId}
+          onChange={(event) =>
+            handleRestaurantChange(
+              event.target.value,
+            )
+          }
+          className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
+        >
+          {restaurants.map((restaurant) => (
+            <option
+              key={restaurant.id}
+              value={restaurant.id}
+            >
+              {restaurant.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="mb-6 flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-500">
-            {tables.length} mesas configuradas
-          </p>
-        </div>
+        <p className="text-sm text-gray-500">
+          {loading
+            ? "Cargando mesas..."
+            : `${tables.length} mesas configuradas`}
+        </p>
 
         <button
           type="button"
@@ -103,7 +177,7 @@ export default function TablesManager({
           className="rounded-xl bg-black px-5 py-3 font-semibold text-white disabled:opacity-50"
         >
           {loading
-            ? "Generando..."
+            ? "Cargando..."
             : "Descargar PDF"}
         </button>
       </div>
