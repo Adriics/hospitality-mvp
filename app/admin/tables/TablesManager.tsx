@@ -88,44 +88,190 @@ export default function TablesManager({
     }
   }
 
-  async function generatePdf() {
+  async function generatePdf(theme: "light" | "dark") {
     try {
       setLoading(true);
 
-      const pdf = new jsPDF();
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
 
-      const baseUrl = window.location.origin;
+      const pageWidth = 210;
+
+      const cardWidth = 86;
+      const cardHeight = 125;
+      const cardX = (pageWidth - cardWidth) / 2;
+
+      const cardPositions = [18, 154];
+
+      const isDark = theme === "dark";
 
       for (let index = 0; index < tables.length; index++) {
         const table = tables[index];
 
-        if (index > 0) {
+        const positionInPage = index % 2;
+
+        if (index > 0 && positionInPage === 0) {
           pdf.addPage();
         }
 
-        const url = `${baseUrl}/m/${table.token}`;
+        const cardY = cardPositions[positionInPage];
+
+        const url = `${window.location.origin}/m/${table.token}`;
 
         const qrDataUrl = await QRCode.toDataURL(url, {
           width: 800,
           margin: 2,
+          errorCorrectionLevel: "M",
         });
 
-        pdf.setFontSize(28);
+        // =========================
+        // COLORES
+        // =========================
 
-        pdf.text(`MESA ${table.number}`, 105, 35, {
+        const backgroundColor = isDark ? [20, 35, 30] : [250, 248, 243];
+
+        const textColor = isDark ? [250, 248, 243] : [20, 35, 30];
+
+        const borderColor = isDark ? [65, 80, 72] : [220, 215, 205];
+
+        const accentColor = [212, 175, 124];
+
+        // =========================
+        // TARJETA
+        // =========================
+
+        pdf.setFillColor(
+          backgroundColor[0],
+          backgroundColor[1],
+          backgroundColor[2],
+        );
+
+        pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 4, 4, "F");
+
+        pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+
+        pdf.setLineWidth(0.4);
+
+        pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 4, 4, "S");
+
+        // =========================
+        // ISOTIPO
+        // =========================
+
+        const logoCenterX = pageWidth / 2;
+        const logoY = cardY + 12;
+
+        pdf.setDrawColor(accentColor[0], accentColor[1], accentColor[2]);
+
+        pdf.setLineWidth(1.2);
+
+        // Cuerno izquierdo
+        pdf.line(logoCenterX, logoY + 4, logoCenterX - 5, logoY);
+
+        pdf.line(logoCenterX - 5, logoY, logoCenterX - 10, logoY - 3);
+
+        // Cuerno derecho
+        pdf.line(logoCenterX, logoY + 4, logoCenterX + 5, logoY);
+
+        pdf.line(logoCenterX + 5, logoY, logoCenterX + 10, logoY - 3);
+
+        // =========================
+        // TAVRO
+        // =========================
+
+        pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
+
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(17);
+
+        pdf.text("TAVRO", pageWidth / 2, cardY + 28, {
           align: "center",
         });
 
-        pdf.addImage(qrDataUrl, "PNG", 45, 55, 120, 120);
+        // Línea decorativa
+        pdf.setDrawColor(accentColor[0], accentColor[1], accentColor[2]);
 
-        pdf.setFontSize(12);
+        pdf.setLineWidth(0.6);
 
-        pdf.text("Escanea para avisar al personal", 105, 190, {
+        pdf.line(pageWidth / 2 - 5, cardY + 33, pageWidth / 2 + 5, cardY + 33);
+
+        // =========================
+        // MESA
+        // =========================
+
+        pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
+
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(13);
+
+        pdf.text(`MESA ${table.number}`, pageWidth / 2, cardY + 43, {
+          align: "center",
+        });
+
+        // =========================
+        // QR
+        // =========================
+
+        const qrSize = 50;
+        const qrX = (pageWidth - qrSize) / 2;
+        const qrY = cardY + 46;
+
+        pdf.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+
+        // =========================
+        // TEXTO
+        // =========================
+
+        pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
+
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(10.5);
+
+        pdf.text("¿Necesitas algo?", pageWidth / 2, cardY + 101, {
+          align: "center",
+        });
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8.5);
+
+        pdf.text("Escanea y avísanos", pageWidth / 2, cardY + 108, {
+          align: "center",
+        });
+
+        // =========================
+        // FOOTER
+        // =========================
+
+        pdf.setFillColor(
+          isDark ? 250 : 20,
+          isDark ? 248 : 35,
+          isDark ? 243 : 30,
+        );
+
+        pdf.roundedRect(cardX, cardY + cardHeight - 8, cardWidth, 8, 0, 0, "F");
+
+        pdf.setTextColor(
+          isDark ? 20 : 255,
+          isDark ? 35 : 255,
+          isDark ? 30 : 255,
+        );
+
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(6.5);
+
+        pdf.text("POWERED BY TAVRO", pageWidth / 2, cardY + cardHeight - 3, {
           align: "center",
         });
       }
 
-      pdf.save("mesas-qr.pdf");
+      pdf.save(
+        theme === "dark"
+          ? "tavro-mesas-qr-oscuro.pdf"
+          : "tavro-mesas-qr-claro.pdf",
+      );
     } catch (error) {
       console.error("Error generando PDF:", error);
     } finally {
@@ -174,11 +320,20 @@ export default function TablesManager({
 
           <button
             type="button"
-            onClick={generatePdf}
+            onClick={() => generatePdf("light")}
             disabled={loading || tables.length === 0}
-            className="rounded-xl bg-black px-5 py-3 font-semibold text-white disabled:opacity-50"
+            className="rounded-xl border border-gray-300 bg-white px-5 py-3 font-semibold text-gray-900 disabled:opacity-50"
           >
-            {loading ? "Cargando..." : "Descargar PDF"}
+            PDF claro
+          </button>
+
+          <button
+            type="button"
+            onClick={() => generatePdf("dark")}
+            disabled={loading || tables.length === 0}
+            className="rounded-xl bg-gray-900 px-5 py-3 font-semibold text-white disabled:opacity-50"
+          >
+            PDF oscuro
           </button>
         </div>
       </div>
