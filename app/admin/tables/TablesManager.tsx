@@ -293,7 +293,7 @@ export default function TablesManager({
           id="restaurant"
           value={restaurantId}
           onChange={(event) => handleRestaurantChange(event.target.value)}
-          className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3"
+          className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900"
         >
           {restaurants.map((restaurant) => (
             <option key={restaurant.id} value={restaurant.id}>

@@ -105,7 +105,7 @@ export default function RestaurantsPage() {
                 }
               }}
               placeholder="Nombre del restaurante"
-              className="flex-1 rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+              className="flex-1 text-gray-900 rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black placeholder:text-gray-400"
             />
 
             <button
