@@ -1,70 +1,68 @@
-import { supabase } from '@/lib/supabase/client'
-import TableActions from './TableActions'
+import { supabase } from "@/lib/supabase/client";
+import TableActions from "./TableActions";
 
 type Props = {
   params: Promise<{
-    token: string
-  }>
-}
+    token: string;
+  }>;
+};
 
 export default async function TablePage({ params }: Props) {
-
-  const { token } = await params
+  const { token } = await params;
 
   const { data: table, error: tableError } = await supabase
-    .from('tables')
-    .select('id, number, restaurant_id')
-    .eq('token', token)
-    .single()
+    .from("tables")
+    .select("id, number, restaurant_id")
+    .eq("token", token)
+    .single();
 
   if (tableError || !table) {
     return (
       <main className="flex min-h-screen items-center justify-center p-6">
-        <h1 className="text-xl font-semibold">
-          Mesa no encontrada
-        </h1>
+        <h1 className="text-xl font-semibold">Mesa no encontrada</h1>
       </main>
-    )
+    );
   }
 
   const { data: restaurant, error: restaurantError } = await supabase
-    .from('restaurants')
-    .select('id, name')
-    .eq('id', table.restaurant_id)
-    .single()
+    .from("restaurants")
+    .select("id, name")
+    .eq("id", table.restaurant_id)
+    .single();
 
   if (restaurantError || !restaurant) {
     return (
       <main className="flex min-h-screen items-center justify-center p-6">
-        <h1 className="text-xl font-semibold">
-          Restaurante no encontrado
-        </h1>
+        <h1 className="text-xl font-semibold">Restaurante no encontrado</h1>
       </main>
-    )
+    );
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 px-4 py-8">
+    <main className="min-h-screen bg-[#f8f6f1] px-4 py-8">
       <div className="mx-auto max-w-md">
-        <div className="mb-6 rounded-2xl bg-white p-6 text-center shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
-            Bienvenido a
+        {/* Marca */}
+        <div className="mb-8 text-center">
+          <p className="text-sm font-semibold tracking-[0.25em] text-[#c9a56b]">
+            TAVRO
           </p>
 
-          <h1 className="mt-1 text-2xl font-bold text-gray-900">
-            {restaurant.name}
-          </h1>
-
-          <div className="mt-3 inline-block rounded-full bg-gray-100 px-4 py-2">
-            <span className="text-sm font-semibold text-gray-700">
-              Mesa {table.number}
-            </span>
-          </div>
+          <div className="mx-auto mt-3 h-px w-8 bg-[#c9a56b]" />
         </div>
 
-        <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">
-            ¿En qué podemos ayudarte?
+        {/* Restaurante y mesa */}
+        <div className="mb-8 text-center">
+          <p className="text-sm font-medium text-gray-500">{restaurant.name}</p>
+
+          <h1 className="mt-2 text-3xl font-bold text-[#14231e]">
+            Mesa {table.number}
+          </h1>
+        </div>
+
+        {/* Título */}
+        <div className="mb-5">
+          <h2 className="text-2xl font-bold text-[#14231e]">
+            ¿Necesitas algo?
           </h2>
 
           <p className="mt-1 text-sm text-gray-500">
@@ -73,8 +71,12 @@ export default async function TablePage({ params }: Props) {
         </div>
 
         <TableActions token={token} />
+
+        {/* Footer */}
+        <p className="mt-8 text-center text-xs font-medium tracking-wide text-gray-400">
+          POWERED BY TAVRO
+        </p>
       </div>
     </main>
-  )
-  
+  );
 }
