@@ -16,7 +16,7 @@ export async function createRequest(
     throw new Error('Mesa no encontrada')
   }
 
-  const { error } = await supabase
+  const { data: request, error } = await supabase
     .from('requests')
     .insert({
       restaurant_id: table.restaurant_id,
@@ -24,10 +24,15 @@ export async function createRequest(
       type,
       status: 'PENDING',
     })
+    .select('id')
+    .single()
 
-  if (error) {
-    throw new Error(error.message)
+  if (error || !request) {
+    throw new Error(error?.message ?? 'No se ha podido crear la petición')
   }
 
-  return { success: true }
+  return {
+    success: true,
+    requestId: request.id,
+  }
 }
