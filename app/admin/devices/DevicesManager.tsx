@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { generatePairingCode } from "./actions";
 
 type Restaurant = {
   id: string;
@@ -31,23 +32,25 @@ export default function DevicesManager({
   initialRestaurantId,
   initialDevices,
 }: DevicesManagerProps) {
-  const [restaurantId, setRestaurantId] =
-    useState(initialRestaurantId);
+  const [restaurantId, setRestaurantId] = useState(initialRestaurantId);
 
-  const [devices, setDevices] =
-    useState<Device[]>(initialDevices);
+  const [devices, setDevices] = useState<Device[]>(initialDevices);
 
   const [tables, setTables] = useState<Table[]>([]);
 
   const [deviceName, setDeviceName] = useState("");
 
-  const [editingDeviceId, setEditingDeviceId] =
-    useState<string | null>(null);
+  const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
 
-  const [selectedTableIds, setSelectedTableIds] =
-    useState<string[]>([]);
+  const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
+
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+
+  const [pairingDeviceId, setPairingDeviceId] = useState<string | null>(null);
+
+  const [pairingExpiresAt, setPairingExpiresAt] = useState<string | null>(null);
 
   async function loadTables(newRestaurantId: string) {
     const { data, error } = await supabase
@@ -65,44 +68,35 @@ export default function DevicesManager({
     setTables(data ?? []);
   }
 
-  async function handleRestaurantChange(
-    newRestaurantId: string,
-  ) {
+  async function handleRestaurantChange(newRestaurantId: string) {
     setRestaurantId(newRestaurantId);
     setEditingDeviceId(null);
     setSelectedTableIds([]);
     setLoading(true);
 
-    const [devicesResult, tablesResult] =
-      await Promise.all([
-        supabase
-          .from("devices")
-          .select("id, name, created_at")
-          .eq("restaurant_id", newRestaurantId)
-          .order("name", { ascending: true }),
+    const [devicesResult, tablesResult] = await Promise.all([
+      supabase
+        .from("devices")
+        .select("id, name, created_at")
+        .eq("restaurant_id", newRestaurantId)
+        .order("name", { ascending: true }),
 
-        supabase
-          .from("tables")
-          .select("id, number, device_id")
-          .eq("restaurant_id", newRestaurantId)
-          .order("number", { ascending: true }),
-      ]);
+      supabase
+        .from("tables")
+        .select("id, number, device_id")
+        .eq("restaurant_id", newRestaurantId)
+        .order("number", { ascending: true }),
+    ]);
 
     if (devicesResult.error) {
-      console.error(
-        "Error cargando dispositivos:",
-        devicesResult.error,
-      );
+      console.error("Error cargando dispositivos:", devicesResult.error);
       setDevices([]);
     } else {
       setDevices(devicesResult.data ?? []);
     }
 
     if (tablesResult.error) {
-      console.error(
-        "Error cargando mesas:",
-        tablesResult.error,
-      );
+      console.error("Error cargando mesas:", tablesResult.error);
       setTables([]);
     } else {
       setTables(tablesResult.data ?? []);
@@ -138,10 +132,7 @@ export default function DevicesManager({
         throw error;
       }
 
-      setDevices((currentDevices) => [
-        ...currentDevices,
-        data,
-      ]);
+      setDevices((currentDevices) => [...currentDevices, data]);
 
       setDeviceName("");
     } catch (error) {
@@ -228,14 +219,27 @@ export default function DevicesManager({
       setEditingDeviceId(null);
       setSelectedTableIds([]);
     } catch (error) {
-      console.error(
-        "Error guardando asignación de mesas:",
-        error,
-      );
+      console.error("Error guardando asignación de mesas:", error);
 
-      alert(
-        "No se han podido guardar las mesas del dispositivo.",
-      );
+      alert("No se han podido guardar las mesas del dispositivo.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGeneratePairingCode(deviceId: string) {
+    try {
+      setLoading(true);
+
+      const result = await generatePairingCode(deviceId);
+
+      setPairingCode(result.code);
+      setPairingDeviceId(deviceId);
+      setPairingExpiresAt(result.expiresAt);
+    } catch (error) {
+      console.error("Error generando código:", error);
+
+      alert("No se ha podido generar el código de vinculación.");
     } finally {
       setLoading(false);
     }
@@ -255,16 +259,11 @@ export default function DevicesManager({
         <select
           id="restaurant"
           value={restaurantId}
-          onChange={(event) =>
-            handleRestaurantChange(event.target.value)
-          }
+          onChange={(event) => handleRestaurantChange(event.target.value)}
           className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900"
         >
           {restaurants.map((restaurant) => (
-            <option
-              key={restaurant.id}
-              value={restaurant.id}
-            >
+            <option key={restaurant.id} value={restaurant.id}>
               {restaurant.name}
             </option>
           ))}
@@ -273,22 +272,17 @@ export default function DevicesManager({
 
       {/* Crear dispositivo */}
       <div className="mb-8 rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-bold text-gray-900">
-          Añadir dispositivo
-        </h2>
+        <h2 className="text-lg font-bold text-gray-900">Añadir dispositivo</h2>
 
         <p className="mt-1 text-sm text-gray-500">
-          Puedes llamarlo, por ejemplo, "Juan", "Barra" o
-          "Terraza".
+          Puedes llamarlo, por ejemplo, "Juan", "Barra" o "Terraza".
         </p>
 
         <div className="mt-4 flex gap-3">
           <input
             type="text"
             value={deviceName}
-            onChange={(event) =>
-              setDeviceName(event.target.value)
-            }
+            onChange={(event) => setDeviceName(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 addDevice();
@@ -321,13 +315,10 @@ export default function DevicesManager({
       {/* Dispositivos */}
       {devices.length === 0 ? (
         <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-          <p className="font-semibold text-gray-900">
-            No hay dispositivos
-          </p>
+          <p className="font-semibold text-gray-900">No hay dispositivos</p>
 
           <p className="mt-1 text-sm text-gray-500">
-            Crea uno para empezar a configurar la recepción
-            de peticiones.
+            Crea uno para empezar a configurar la recepción de peticiones.
           </p>
         </div>
       ) : (
@@ -337,8 +328,7 @@ export default function DevicesManager({
               (table) => table.device_id === device.id,
             );
 
-            const isEditing =
-              editingDeviceId === device.id;
+            const isEditing = editingDeviceId === device.id;
 
             return (
               <div
@@ -358,14 +348,36 @@ export default function DevicesManager({
 
                   <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
                     {assignedTables.length}{" "}
-                    {assignedTables.length === 1
-                      ? "mesa"
-                      : "mesas"}
+                    {assignedTables.length === 1 ? "mesa" : "mesas"}
                   </span>
                 </div>
 
                 {!isEditing ? (
                   <>
+                    {pairingDeviceId === device.id && pairingCode && (
+                      <div className="mt-5 rounded-xl bg-gray-50 p-4 text-center">
+                        <p className="text-sm font-semibold text-gray-700">
+                          Código de vinculación
+                        </p>
+
+                        <p className="mt-2 text-3xl font-bold tracking-widest text-gray-900">
+                          {pairingCode}
+                        </p>
+
+                        <p className="mt-2 text-xs text-gray-500">
+                          Válido durante 10 minutos.
+                        </p>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleGeneratePairingCode(device.id)}
+                      disabled={loading}
+                      className="mt-4 w-full rounded-xl bg-gray-900 px-4 py-3 font-semibold text-white disabled:opacity-50"
+                    >
+                      {loading ? "Generando..." : "Vincular dispositivo"}
+                    </button>
                     <div className="mt-4">
                       {assignedTables.length === 0 ? (
                         <p className="text-sm text-gray-500">
@@ -375,9 +387,7 @@ export default function DevicesManager({
                         <p className="text-sm text-gray-700">
                           Mesas:{" "}
                           {assignedTables
-                            .map(
-                              (table) => table.number,
-                            )
+                            .map((table) => table.number)
                             .join(", ")}
                         </p>
                       )}
@@ -385,9 +395,7 @@ export default function DevicesManager({
 
                     <button
                       type="button"
-                      onClick={() =>
-                        startEditingDevice(device.id)
-                      }
+                      onClick={() => startEditingDevice(device.id)}
                       className="mt-5 w-full rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-900 hover:bg-gray-50"
                     >
                       Editar mesas
@@ -412,12 +420,8 @@ export default function DevicesManager({
                           >
                             <input
                               type="checkbox"
-                              checked={selectedTableIds.includes(
-                                table.id,
-                              )}
-                              onChange={() =>
-                                toggleTable(table.id)
-                              }
+                              checked={selectedTableIds.includes(table.id)}
+                              onChange={() => toggleTable(table.id)}
                               className="h-4 w-4"
                             />
 
@@ -426,8 +430,7 @@ export default function DevicesManager({
                             </span>
 
                             {table.device_id &&
-                              table.device_id !==
-                                device.id && (
+                              table.device_id !== device.id && (
                                 <span className="ml-auto text-xs text-gray-500">
                                   Actualmente asignada
                                 </span>
@@ -455,9 +458,7 @@ export default function DevicesManager({
                         disabled={loading}
                         className="flex-1 rounded-xl bg-gray-900 px-4 py-3 font-semibold text-white disabled:opacity-50"
                       >
-                        {loading
-                          ? "Guardando..."
-                          : "Guardar cambios"}
+                        {loading ? "Guardando..." : "Guardar cambios"}
                       </button>
                     </div>
                   </div>
