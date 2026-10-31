@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase/client";
 import RequestList from "./RequestList";
+import DashboardClient from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
 
@@ -82,19 +83,9 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-gray-100 px-4 py-8">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Dashboard
-          </h1>
-
-          <p className="mt-1 text-gray-500">
-            Peticiones pendientes
-          </p>
-        </div>
+      <DashboardClient initialRequests={formattedRequests} />
 
         <RequestList initialRequests={formattedRequests} />
-      </div>
-    </main>
++    </main>
   );
 }

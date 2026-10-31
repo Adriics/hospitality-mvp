@@ -23,7 +23,7 @@ export default function RequestList({ initialRequests }: RequestListProps) {
 
   useEffect(() => {
     const channel = supabase
-      .channel("requests-dashboard")
+      .channel(`requests-dashboard-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         {
